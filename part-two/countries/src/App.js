@@ -1,74 +1,83 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 
 const App = () => {
-  const [searchQuery, setSearchQuery] = useState('');
   const [countries, setCountries] = useState([]);
-
-  const handleSearch = () => {
-    axios.get(`https://restcountries.com/v3.1/name/${searchQuery}`)
-      .then(response => {
-        const foundCountries = response.data;
-        setCountries(foundCountries);
-      })
-      .catch(error => {
-        console.error('Error fetching countries by search', error);
-      });
-  };
+  const [searchText, setSearchText] = useState("");
 
   useEffect(() => {
-    if (searchQuery.trim() !== '') {
-      handleSearch();
-    } else {
-      setCountries([]);
-    }
-  }, [searchQuery]);
+    axios.get("https://restcountries.com/v3.1/all").then((response) => {
+      setCountries(response.data);
+    });
+  }, []);
+
+  const handleSearchChange = (event) => {
+    const { value } = event.target;
+    setSearchText(value);
+  };
 
   return (
     <div>
-      <h1>Country Information App</h1>
-      <input
-        type="text"
-        value={searchQuery}
-        onChange={e => setSearchQuery(e.target.value)}
-        placeholder="Search for a country"
-      />
-      <button onClick={handleSearch}>Search</button>
-      
-      <div>
-        {countries.length === 1 && (
-          <CountryInfo country={countries[0]} />
-        )}
-        {countries.length > 1 && countries.length <= 10 && (
-          <CountryList countries={countries} />
-        )}
-        {countries.length > 10 && (
-          <p>Too many matches, please specify your query.</p>
-        )}
-      </div>
+      <Search searchText={searchText} handleSearchChange={handleSearchChange} />
+      <Countries countries={countries} searchText={searchText} />
     </div>
   );
 };
 
-const CountryList = ({ countries }) => {
+const Countries = ({ countries, searchText }) => {
+  const [expandedCountry, setExpandedCountry] = useState(null);
+
+  const filteredCountries = countries.filter(({ name: { common } }) =>
+    common.toLowerCase().includes(searchText.toLowerCase())
+  );
+
+  if (!searchText) {
+    return <div>Search for a country</div>;
+  }
+
+  if (filteredCountries.length > 10) {
+    return <div>Too many matches, specify another filter</div>;
+  }
+
   return (
-    <ul>
-      {countries.map((country, index) => (
-        <li key={index}>{country.name.common}</li>
+    <div>
+      {filteredCountries.map((country) => (
+        <div key={country.cca3}>
+          <span>{country.name.common}</span>
+          <button onClick={() => setExpandedCountry(country)}>
+            {expandedCountry === country ? "Hide" : "Show"}
+          </button>
+          {expandedCountry === country && <Country country={country} />}
+        </div>
       ))}
-    </ul>
+    </div>
   );
 };
 
-const CountryInfo = ({ country }) => {
-  const { name, capital, area, languages } = country[0];
+const Country = ({ country }) => {
+  const { name, capital, area, languages, flags } = country;
 
   return (
     <div>
       <h2>{name.common}</h2>
-      <p>Capital: {capital?.[0] || 'N/A'}</p>
-      <p>Area: {area?.toLocaleString()} km²</p>
-      <p>Languages: {Object.values(languages).join(', ')}</p>
+      <div>Capital: {capital?.[0]}</div>
+      <div>Area: {area} km²</div>
+      <h3>Languages:</h3>
+      <ul>
+        {Object.entries(languages).map(([code, language]) => (
+          <li key={code}>{language}</li>
+        ))}
+      </ul>
+      <img src={flags.svg} alt={`${name.common} flag`} height="100px" width="100px" />
+    </div>
+  );
+};
+
+const Search = ({ searchText, handleSearchChange }) => {
+  return (
+    <div>
+      find countries
+      <input type="text" value={searchText} onChange={handleSearchChange} />
     </div>
   );
 };
